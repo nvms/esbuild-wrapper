@@ -1,0 +1,32 @@
+import { Plugin, PluginBuild } from "esbuild";
+import { existsSync, statSync } from "fs";
+import * as path from "path";
+import { logWithTime } from "../print.js";
+
+
+function human(size: number) {
+  const i = Math.floor(Math.log(size) / Math.log(1024));
+  return (
+    (size / 1024 ** i).toFixed(2) + ["B", "KB", "MB", "GB", "TB"][i]
+  );
+}
+
+export function artifactSize(): Plugin {
+  return {
+    name: "artifact-size",
+    setup({ initialOptions: { outfile, outdir }, onEnd }: PluginBuild) {
+      onEnd(async ({ metafile }) => {
+        let totalBytes = 0;
+        for (const outfile of Object.keys(metafile.outputs)) {
+          if (outfile) {
+            logWithTime(`${outfile}: ${human(metafile.outputs[outfile].bytes)}`);
+            totalBytes += metafile.outputs[outfile].bytes;
+          }
+        }
+        if (totalBytes) {
+          logWithTime(`total ${human(totalBytes)}`);
+        }
+      });
+    },
+  };
+}
