@@ -6,7 +6,7 @@ import { error, warn } from "./print";
 
 function validateConfig(config: ESBWConfig, mode: Mode) {
   Object.keys(config?.artifacts)?.forEach((artifactName) => {
-    if (!config.artifactsCommon.format && !["esm", "cjs", "iife"].includes(config.artifacts[artifactName].format))
+    if (!config?.artifactsCommon.format && !["esm", "cjs", "iife"].includes(config.artifacts[artifactName].format))
       throw new Error(`invalid 'format' for bundle '${artifactName}'. got "${config.artifacts[artifactName].format}", expected one of 'esm', 'cjs', 'iife'`);
   });
 
