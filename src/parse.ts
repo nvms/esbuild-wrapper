@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import {Mode} from "./general";
+import { Mode } from "./general";
 import { ESBWConfig } from "./interface";
 import { error, warn } from "./print";
 
