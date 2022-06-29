@@ -1,6 +1,4 @@
 import { Plugin, PluginBuild } from "esbuild";
-import { existsSync, statSync } from "fs";
-import * as path from "path";
 import { logWithTime } from "../print.js";
 
 
@@ -14,7 +12,7 @@ function human(size: number) {
 export function artifactSize(): Plugin {
   return {
     name: "artifact-size",
-    setup({ initialOptions: { outfile, outdir }, onEnd }: PluginBuild) {
+    setup({ onEnd }: PluginBuild) {
       onEnd(async ({ metafile }) => {
         let totalBytes = 0;
         for (const outfile of Object.keys(metafile.outputs)) {
