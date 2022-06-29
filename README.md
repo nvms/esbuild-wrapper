@@ -147,21 +147,19 @@ export default {
     inject: ["./pragma-shim.js"],
     jsxFactory: "h",
     jsxFragment: "Fragment",
+    entryPoints: ["./src/index.ts"],
   },
   artifacts: {
     esm: {
       format: "esm",
-      entryPoints: ["./src/index.ts"],
       outfile: "./dist/index.esm.js",
     },
     cjs: {
       format: "cjs",
-      entryPoints: ["./src/index.ts"],
       outfile: "./dist/index.cjs.js",
     },
     iife: {
       format: "iife",
-      entryPoints: ["./src/index.ts"],
       outfile: "./dist/index.iife.js",
     },
   },
