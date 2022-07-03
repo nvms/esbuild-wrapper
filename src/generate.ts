@@ -24,6 +24,8 @@ function modes(platform: "browser"|"node", lang: "JavaScript"|"TypeScript"): str
   out += `
   buildMode: {
     build: ["main", "mainCJS", "mainIIFE"],
+    minify: true,
+    minifyWhitespace: true,
   },`;
 
   return out;
