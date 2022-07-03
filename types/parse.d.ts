@@ -1,3 +1,3 @@
-import { Mode } from "./general";
-import { ESBWConfig } from "./interface";
+import { Mode } from "./general.js";
+import { ESBWConfig } from "./interface.js";
 export declare function parseConfig(mode: Mode): Promise<ESBWConfig>;

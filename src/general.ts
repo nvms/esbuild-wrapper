@@ -3,10 +3,10 @@ import { build as esbuildBuild, BuildOptions } from "esbuild";
 import FastGlob from "fast-glob";
 import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { parseConfig } from "./parse";
-import { error, finishedMessage, info, logWithTime } from "./print";
-import { Server } from "./server";
-import { stripHooks } from "./stripper";
+import { parseConfig } from "./parse.js";
+import { error, finishedMessage, info, logWithTime } from "./print.js";
+import { Server } from "./server.js";
+import { stripHooks } from "./stripper.js";
 
 export enum Mode {
   WATCH = "watchMode",

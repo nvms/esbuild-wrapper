@@ -9,9 +9,9 @@ import {
 import { AddressInfo } from "node:net";
 import * as path from "node:path";
 import { parse } from "node:url";
-import { ESBWConfig } from "./interface";
-import mimetypes from "./mimetypes";
-import { logWithTime } from "./print";
+import { ESBWConfig } from "./interface.js";
+import mimetypes from "./mimetypes.js";
+import { logWithTime } from "./print.js";
 
 const mime = Object.entries(mimetypes).reduce(
   (all, [type, exts]) =>

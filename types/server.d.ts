@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { EventEmitter } from "node:events";
 import { Server as HttpServer, ServerResponse } from "node:http";
-import { ESBWConfig } from "./interface";
+import { ESBWConfig } from "./interface.js";
 export declare class Server {
     config: ESBWConfig;
     buildEmitter: EventEmitter;

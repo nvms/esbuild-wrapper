@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, renameSync, writeFileSync } from "fs";
 import { execSync } from "node:child_process";
 import prompts from "prompts";
 import sortPackageJson from "sort-package-json";
-import { info } from "./print";
+import { info } from "./print.js";
 
 function fVal(val: string | boolean): string {
   if (typeof val === "string") return `"${val}"`;

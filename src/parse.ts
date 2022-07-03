@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { Mode } from "./general";
-import { ESBWConfig } from "./interface";
-import { error, warn } from "./print";
+import { Mode } from "./general.js";
+import { ESBWConfig } from "./interface.js";
+import { error, warn } from "./print.js";
 
 function validateConfig(config: ESBWConfig, mode: Mode) {
   Object.keys(config?.artifacts)?.forEach((artifactName) => {

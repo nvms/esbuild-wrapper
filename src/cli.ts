@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { general, Mode } from "./general";
-import { generate } from "./generate";
-import { error } from "./print";
+import { general, Mode } from "./general.js";
+import { generate } from "./generate.js";
+import { error } from "./print.js";
 
 function usage() {
   return `esbuild-wrapper
