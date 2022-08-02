@@ -1,1 +1,1 @@
-export { artifactSize } from "./artifact-size";
+export { artifactSize } from "./artifact-size.js";

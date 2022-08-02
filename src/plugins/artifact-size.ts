@@ -1,5 +1,5 @@
 import { Plugin, PluginBuild } from "esbuild";
-import { logWithTime } from "../print";
+import { logWithTime } from "../print.js";
 
 
 function human(size: number) {

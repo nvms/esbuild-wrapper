@@ -1,5 +1,5 @@
 import { BuildOptions } from "esbuild";
-import { StagedBuildOptions } from "./interface";
+import { StagedBuildOptions } from "./interface.js";
 
 /**
  * stripHooks removes configuration properties that
