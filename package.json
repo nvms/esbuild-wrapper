@@ -15,7 +15,7 @@
   "scripts": {
     "dev": "tsc --watch"
   },
-  "author": "",
+  "author": "nvms",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^17.0.31",
