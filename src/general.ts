@@ -199,13 +199,13 @@ export async function general(mode: Mode) {
     const modes = Object.values(Mode);
 
     modes.forEach(async (m: string) => {
-      if (mode === m && config[m].beforeAll) await config[m].beforeAll();
+      if (mode === m && config[m].beforeAll) await config[m].beforeAll(artifacts);
     });
 
     await buildArtifacts();
 
     modes.forEach(async (m: string) => {
-      if (mode === m && config[m].afterAll) await config[m].afterAll();
+      if (mode === m && config[m].afterAll) await config[m].afterAll(artifacts);
     });
 
     if (mode === Mode.RUN) {

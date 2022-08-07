@@ -1,9 +1,9 @@
 import { BuildOptions } from "esbuild";
 export interface StagedBuildOptions extends BuildOptions {
     /** Called before all artifacts are built. */
-    beforeAll?: () => Promise<void>;
+    beforeAll?: (artifacts: BuildOptions[]) => Promise<void>;
     /** Called after all artifacts are built. */
-    afterAll?: () => Promise<void>;
+    afterAll?: (artifacts: BuildOptions[]) => Promise<void>;
     /**
      * Array of `artifactName`s. If defined, only these artifacts
      * will be built. If not defined, all artifacts are built.
