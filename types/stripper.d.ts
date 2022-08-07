@@ -7,5 +7,6 @@ import { StagedBuildOptions } from "./interface.js";
 export declare function stripHooks(opts: StagedBuildOptions & {
     index?: string;
     port?: number;
+    reloadPort?: number;
     injectArtifacts?: string[];
 }): BuildOptions;

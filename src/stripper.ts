@@ -9,6 +9,7 @@ export function stripHooks(
   opts: StagedBuildOptions & {
     index?: string;
     port?: number;
+    reloadPort?: number;
     injectArtifacts?: string[];
   }
 ): BuildOptions {
@@ -21,5 +22,6 @@ export function stripHooks(
   delete n.index;
   delete n.injectArtifacts;
   delete n.port;
+  delete n.reloadPort;
   return n;
 }
