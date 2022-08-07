@@ -1,6 +1,6 @@
 {
   "name": "esbuild-wrapper",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "",
   "main": "lib/cli.js",
   "types": "./types/cli.d.ts",
