@@ -65,6 +65,7 @@ export interface ESBWConfig {
     index?: string;
     injectArtifacts?: string[];
     port?: number;
+    reloadPort?: number;
   }
 
   /**
