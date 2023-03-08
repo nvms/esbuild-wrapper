@@ -9,24 +9,30 @@ function fVal(val: string | boolean): string {
   return String(val);
 }
 
-function modes(platform: "browser"|"node", lang: "JavaScript"|"TypeScript"): string {
-  // if platform is "browser", return a serveMode object.
-  let out = "browser" ? `
+function modes(platform: "browser"|"node", lang: "JavaScript"|"TypeScript", usetailwindcss: undefined | true): string {
+  let out = `
   serveMode: {
-    watchPaths: ["src/**/*.{${(lang === "JavaScript" ? "js,jsx" : "ts,tsx")}}"],
-    injectArtifacts: ["main"],
-  },` : `
+    index: "public/index.html",
+    build: ["main"],
+    watchPaths: ["src/**/*.{${(lang === "JavaScript" ? "js,jsx" : "ts,tsx")}}", "public/index.html"],
+    injectArtifacts: ["main"],${usetailwindcss && `
+    beforeAll: async () => await style(),`}
+  },
   runMode: {
+    build: ["main"],
     watchPaths: ["src/**/*.{${(lang === "JavaScript" ? "js,jsx" : "ts,tsx")}}"],
     runfile: "dist/index.js",
-  },`;
-
-  out += `
+  },
+  watchMode: {
+    build: ["main"],
+    watchPaths: ["src/**/*.{${(lang === "JavaScript" ? "js,jsx" : "ts,tsx")}}"],
+  },
   buildMode: {
     build: ["main", "mainCJS", "mainIIFE"],
     minify: true,
-    minifyWhitespace: true,
-  },`;
+    minifyWhitespace: true,${usetailwindcss && `
+    beforeAll: async () => await style(),`}
+  }`;
 
   return out;
 }
@@ -37,7 +43,48 @@ const configTemplate = ({
   entrypoint = undefined,
   lang = "JavaScript",
   loader = undefined,
-}) => `export default {
+  usetailwindcss = undefined,
+}) => {
+    let out = "";
+    if (usetailwindcss) {
+      out += `
+import { readFileSync, writeFileSync, unlinkSync } from "fs";
+import postcss from "postcss";
+import autoprefixer from "autoprefixer";
+import tailwindcss from "tailwindcss";
+import glob from "glob";
+import cssminify from "postcss-minify";
+
+async function style() {
+  const old = glob.sync("public/css/**/*.css");
+  for (const file of old) {
+    try {
+      unlinkSync(file);
+    } catch (e) {}
+  }
+
+  const files = glob.sync("src/**/*.css");
+
+  for (const file of files) {
+    const filename = file.split("/").pop();
+    const to = \`public/css/\${filename}\`;
+    const css = readFileSync(file, "utf8");
+    const result = await postcss([tailwindcss, autoprefixer, cssminify]).process(
+      css,
+      { from: file, to },
+    );
+    writeFileSync(to, result.css);
+  }
+
+  const cssFiles = glob.sync("public/css/**/*.css");
+  const css = cssFiles.map((file) => readFileSync(file, "utf8")).join("\\n");
+  writeFileSync("public/css/main.css", css);
+}
+
+`;
+    }
+
+    out += `export default {
   artifactsCommon: {
     bundle: true,
     platform: "${platform === "browser" ? "browser" : "node"}",${[loader && (lang === "JavaScript" ? "\n    loader: { \".js\": \"jsx\" }," : "\n    loader: { \".ts\": \"tsx\" },")].filter(Boolean)}
@@ -59,9 +106,11 @@ const configTemplate = ({
       entryPoints: [${(entrypoint && fVal(entrypoint))}],
       outfile: "dist/index.iife.js",
     },
-  },${modes(platform as "browser"|"node", lang as "JavaScript"|"TypeScript")}
+  },${modes(platform as "browser"|"node", lang as "JavaScript"|"TypeScript", usetailwindcss)}
 }
 `;
+  return out;
+  };
 
 export async function generate() {
   const questions = [
@@ -120,6 +169,18 @@ export async function generate() {
         { title: "inline and external", value: "both" },
         { title: "none", value: false },
       ],
+    },
+    {
+      type: (prev, values, prompt) => {
+        if (values.platform === "browser") return "select";
+        return null;
+      },
+      name: "usetailwindcss",
+      message: "Do you want to use Tailwind CSS?",
+      choices: [
+        { title: "Yes", value: true },
+        { title: "No", value: false },
+      ],
     }
   ];
 
@@ -166,9 +227,70 @@ export async function generate() {
     info("package.json moved to package.backup.json");
   }
 
+  // create folder "src".
+  mkdirSync("src");
+
+  if (response.usetailwindcss) {
+    mkdirSync("src/style");
+    writeFileSync("src/style/style.css", `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+`);
+    writeFileSync("tailwind.config.cjs", `module.exports = {
+  content: ["./src/**/*.{html,ts}", "./public/index.html"],
+  theme: {
+    extend: {
+
+    },
+  },
+  plugins: [],
+};`);
+
+    writeFileSync("postcss.config.js", `module.exports = {
+  plugins: {
+    tailwindcss: {
+      config: "./tailwind.config.cjs",
+    },
+    autoprefixer: {
+
+    },
+  },
+};`);
+
+    pkg.devDependencies = {
+      ...pkg.devDependencies,
+      "autoprefixer": "^10.4.13",
+      "postcss": "^8.4.21",
+      "postcss-minify": "^1.1.0",
+      "tailwindcss": "^3.2.7"
+    };
+  }
+
+
   // write pkg to package.json.
   writeFileSync("package.json", JSON.stringify(pkg, null, 2));
   info("wrote package.json");
+
+  if (response.lang === "TypeScript") {
+    const config = {
+      compilerOptions: {
+        rootDir: "./src",
+        outDir: "./dist",
+        module: "ESNext",
+        target: "ESNext",
+        lib: response.platform === "browser" ? ["DOM", "ESNext"] : ["ESNext"],
+        declaration: true,
+        declarationDir: "./types",
+        resolveJsonModule: true,
+        moduleResolution: "Node",
+        allowSyntheticDefaultImports: true,
+      },
+      exclude: ["./types", response.platform === "browser" && "./public"].filter(Boolean),
+      include: ["./src"],
+    };
+
+    writeFileSync("tsconfig.json", JSON.stringify(config, null, 2));
+  }
 
   // prefer dependency installation with pnpm, but fallback to npm.
   if (which("pnpm")) {
@@ -178,9 +300,6 @@ export async function generate() {
     info("running 'npm install'");
     execSync("npm install");
   }
-
-  // create folder "src".
-  mkdirSync("src");
 
   // create the file specified by response.entrypoint.
   writeFileSync(response.entrypoint, "");

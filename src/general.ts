@@ -212,6 +212,12 @@ export async function general(mode: Mode) {
       config?.runMode?.build?.forEach((artifactName) => {
         info(`Running artifact "${artifactName}".`);
         const runfile = config?.runMode?.runfile || config.artifacts[artifactName].outfile;
+
+        if (!runfile) {
+          error(`No runfile specified for artifact "${artifactName}". Couldn't find runMode.runfile or artifacts.${artifactName}.outfile.`);
+          process.exit(1);
+        }
+
         const child = spawn(`node ${runfile}`, {
           stdio: "inherit",
           shell: true,
