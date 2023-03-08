@@ -1,9 +1,19 @@
-A mostly unopinionated configuration wrapper for esbuild's build API.
+A mostly unopinionated configuration wrapper for esbuild's build API, and a really fast way to get started with a new project.
+
+The quickest way to get started:
+
+```bash
+cd my-new-project
+npx esbuild-wrapper generate
+```
+
+This will ask you a few questions before scaffolding out a project in the current working directory. When it's done, take a look at the generated `package.json` and `esbw.config.js` to see how things fit together. Run it again with different prompt answers to get a feel for what it's doing.
 
 What you get:
 
-* A simple way to define multiple output targets with an intuitive configuration inheritance hierarchy. From least specific to most specific: `artifactsCommon` -> `artifacts[artifactName]` -> `watch`/`serve`/`build`/`run`. This will make more sense if you continue reading.
-* Build hooks (`beforeAll` and `afterAll`) that are particularly useful for doing something like CSS preprocessing or copying static assets. Example of this below.
+* Four operating modes: build, run, watch and serve.
+* A simple way to define multiple output targets with an intuitive configuration inheritance hierarchy for each of these run modes.
+* Async `beforeAll` and `afterAll` hooks for all operating modes (build, watch, run and serve) which are particularly useful for doing things like CSS preprocessing and copying static assets. Use `esbuild-wrapper generate` and create a browser project and select TailwindCSS when prompted for an example of exactly this.
 
 Create an `esbw.config.js` that fulfills the `ESBWConfig` interface:
 
@@ -96,6 +106,17 @@ export interface ESBWConfig {
 }
 ```
 
+## Configuration hierarchy
+
+`artifactsCommon` -> `artifacts` -> `serve/run/build/watchMode`
+
+1. `artifactsCommon` is of type `BuildOptions`. The configuration defined here is applied to all
+defined artifacts in `artifacts`.
+2. `artifacts` is an object of shape `{ [artifactName: string]: BuildOptions }`, and these configurations
+are prioritized over the ones defined in `artifactsCommon`.
+3. Finally, each mode accepts a `StagedBuildOptions` which is even higher priority than the configurations
+defined in `artifacts`.
+
 A basic config when creating for the browser might look like this:
 
 ```javascript
@@ -117,20 +138,21 @@ export default {
   },
   buildMode: {
     minify: true,
-    minifyWhitespace:true,
+    minifyWhitespace: true,
     sourcemap: false,
   },
 }
 ```
 
-Above, an artifact named "main" is defined. The `main` object itself is just
-an esbuild config (the `BuildOptions` interface -- [link to the interface](https://github.com/evanw/esbuild/blob/master/lib/shared/types.ts#L74-L137)).
+Because this is a fairly simple project with only one defined output artifact, there's no need
+to define an `artifactsCommon`.
 
 The `serveMode` object optionally defines an html entrypoint where built artifacts
 defined by `injectArtifacts` will be injected. `serveMode.build` is an array of artifacts
 that should be built whenever changes are made.
 
-Here's a slightly more involved configuration for a browser project that uses JSX.
+Here's a slightly more involved configuration for a browser project that uses a custom JSX pragma, where esbuild shims the import for the
+pragma into each outfile file automatically.
 
 ```javascript
 // esbw.config.js
@@ -191,16 +213,6 @@ export default {
 import { h, Fragment } from "mir";
 export { h, Fragment };
 ```
-
-## artifactsCommon -> artifacts -> [mode]
-
-In the above config, `artifactsCommon` is defined. This is expected to also be a `BuildOptions` object.
-Options defined in `artifactsCommon` are spread to all defined artifacts.
-
-The order in which these options are spread to
-the final build output is, from least specific to most specific:
-
-`artifactsCommon` -> `artifacts[<artifact>]` -> `[serve/run/build]Mode`.
 
 An example node project:
 
