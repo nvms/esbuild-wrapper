@@ -259,6 +259,7 @@ export async function generate() {
 
     pkg.devDependencies = {
       ...pkg.devDependencies,
+      "glob": "^8.1.0",
       "autoprefixer": "^10.4.13",
       "postcss": "^8.4.21",
       "postcss-minify": "^1.1.0",
