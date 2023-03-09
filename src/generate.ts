@@ -15,8 +15,8 @@ function modes(platform: "browser"|"node", lang: "JavaScript"|"TypeScript", uset
     index: "public/index.html",
     build: ["main"],
     watchPaths: ["src/**/*.{${(lang === "JavaScript" ? "js,jsx" : "ts,tsx")}}", "public/index.html"],
-    injectArtifacts: ["main"],${usetailwindcss && `
-    beforeAll: async () => await style(),`}
+    injectArtifacts: ["main"],${[usetailwindcss && `
+    beforeAll: async () => await style(),`].filter(Boolean)}
   },
   runMode: {
     build: ["main"],
@@ -30,8 +30,8 @@ function modes(platform: "browser"|"node", lang: "JavaScript"|"TypeScript", uset
   buildMode: {
     build: ["main", "mainCJS", "mainIIFE"],
     minify: true,
-    minifyWhitespace: true,${usetailwindcss && `
-    beforeAll: async () => await style(),`}
+    minifyWhitespace: true,${[usetailwindcss && `
+    beforeAll: async () => await style(),`].filter(Boolean)}
   }`;
 
   return out;
