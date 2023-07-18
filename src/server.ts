@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { readFile, stat, Stats } from "node:fs";
+import { readFile, readFileSync, stat, Stats } from "node:fs";
 import {
   createServer,
   IncomingMessage,
@@ -41,62 +41,105 @@ export class Server {
   }
 
   serve() {
-    this.reloadServer = createServer((_: IncomingMessage, res: ServerResponse) => {
-      res.writeHead(200, {
-        "Connection": "keep-alive",
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Access-Control-Allow-Origin": "*",
-      });
-      setInterval(this.reload, 60_000, res, "ping", "idle");
-      this.buildEmitter.removeAllListeners("finished");
-      this.buildEmitter.once("finished", () => this.reload(res, "message", "finished"));
-    }).listen(this.config?.serveMode?.reloadPort ?? 0);
+    const sendIndexTemplate = (res: ServerResponse) => {
+      const { index } = this.config.serveMode;
+      const html = createIndexTemplate(index);
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(html);
+    };
 
-    this.reloadServer.once("listening", async () => {
-      const { port } = this.reloadServer.address() as AddressInfo;
-      this.reloadPort = port;
-    
+    const sendError = (res: ServerResponse, resource: string, status: number) => {
+      res.writeHead(status, { "Content-Type": "text/plain" });
+      res.end(`Resource ${resource} not found`);
+    };
+
+    const sendFile = (res: ServerResponse, resource: string, status: number, data: string, ext: string) => {
+      res.writeHead(status, { "Content-Type": mime[ext] || "application/octet-stream" });
+      res.end(data, "binary");
+    };
+
+    const isRouteRequest = (pathname: string) => {
+      return pathname === "/" || pathname.endsWith("/");
+    };
+
+    const createIndexTemplate = (index: string) => {
+      const html = readFileSync(index, { encoding: "utf-8" });
+      return html.replace("</body>", `${this.bundleInjection()}${this.sseInjection()}\n</body>`);
+    };
+
+    const { port: reloadPort = 0 } = this.config?.serveMode || {};
+    const { port = 0, index } = this.config.serveMode;
+
+    const reload = (res: ServerResponse, event: string, data: string) => {
+      const message = `event: ${event}\ndata: ${data}\n\n`;
+      res.write(message);
+    };
+
+    const onBuildFinished = (res: ServerResponse) => {
+      this.buildEmitter.once("finished", () => reload(res, "message", "finished"));
+    };
+
+    const serveReload = () => {
+      this.reloadServer = createServer((_: IncomingMessage, res: ServerResponse) => {
+        res.writeHead(200, {
+          "Connection": "keep-alive",
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Access-Control-Allow-Origin": "*",
+        });
+        setInterval(reload, 60_000, res, "ping", "idle");
+        this.buildEmitter.removeAllListeners("finished");
+        onBuildFinished(res);
+      }).listen(reloadPort);
+
+      this.reloadServer.once("listening", () => {
+        const { port } = this.reloadServer.address() as AddressInfo;
+        this.reloadPort = port;
+      });
+    };
+
+    const serveMain = () => {
       this.server = createServer((req: IncomingMessage, res: ServerResponse) => {
         const pathname = parse(req.url).pathname;
         const isRoute = isRouteRequest(pathname);
         const status = isRoute && pathname !== "/" ? 301 : 200;
-        const resource = isRoute ? `/${this.config.serveMode.index}` : decodeURI(pathname);
+        const resource = isRoute ? `/${index}` : decodeURI(pathname);
         const uri = path.join(process.cwd(), resource);
         const ext = uri.replace(/^.*[./\\]/, "").toLowerCase();
+
         stat(uri, (err: NodeJS.ErrnoException, _: Stats) => {
-          if (err && isRoute) {
-            this.sendIndexTemplate(res);
-          } else if (err) {
-            this.sendError(res, resource, 404);
-          } else {
+          if (err && isRoute) sendIndexTemplate(res);
+          else if (err) sendError(res, resource, 404);
+          else {
             readFile(uri, "binary", (err: NodeJS.ErrnoException, data: string) => {
-              if (err) this.sendError(res, resource, 500);
-              if (isRoute) {
-                data = data.replace("</body>", `${this.bundleInjection()}${this.sseInjection()}\n</body>`);
-              }
-              this.sendFile(res, resource, status, data, ext);
+              if (err) sendError(res, resource, 500);
+              if (isRoute) data = createIndexTemplate(uri);
+              sendFile(res, resource, status, data, ext);
             });
           }
         });
-      }).listen(this.config.serveMode?.port || 0);
+      }).listen(port);
 
       this.server.once("listening", () => {
         const { port } = this.server.address() as AddressInfo;
         logWithTime(`http://localhost:${port}`);
       });
-    });
+    };
+
+    serveReload();
+    serveMain();
   }
 
   bundleInjection(): string {
-    let s = "";
-    for (const artifactName of this.config.serveMode.injectArtifacts) {
-      const artifact = this.config.artifacts[artifactName];
-      if (artifact.outfile) {
-        s += `<script src="/${artifact.outfile}" ${artifact.format === "esm" ? 'type="module"' : ''}></script>\n`;
-      }
-    }
-    return s;
+    return this.config.serveMode.injectArtifacts
+      .map((artifactName) => {
+        const artifact = this.config.artifacts[artifactName];
+        if (artifact.outfile) {
+          return `<script src="/${artifact.outfile}" ${artifact.format === "esm" ? 'type="module"' : ''}></script>`;
+        }
+        return "";
+      })
+      .join("\n");
   }
 
   sseInjection(): string {

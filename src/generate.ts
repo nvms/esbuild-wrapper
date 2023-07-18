@@ -10,7 +10,7 @@ function fVal(val: string | boolean): string {
 }
 
 function modes(platform: "browser"|"node", lang: "JavaScript"|"TypeScript", usetailwindcss: undefined | true): string {
-  let out = `
+  return `
   serveMode: {
     index: "public/index.html",
     build: ["main"],
@@ -33,8 +33,6 @@ function modes(platform: "browser"|"node", lang: "JavaScript"|"TypeScript", uset
     minifyWhitespace: true,${[usetailwindcss && `
     beforeAll: async () => await style(),`].filter(Boolean)}
   }`;
-
-  return out;
 }
 
 const configTemplate = ({
@@ -141,7 +139,7 @@ export async function generate() {
       ],
     },
     {
-      type: "confirm",
+      type: (prev: "browser" | "node") => prev === "browser" ? "select" : null,
       name: "customPragma",
       message: "Do you need to define a custom JSX factory (default is React.createElement)?",
       initial: false,
@@ -189,14 +187,24 @@ export async function generate() {
 
   let pkg: any = {
     name: `${folder}`,
-    version: "0.0.1",
+    version: "0.0.0",
     description: "",
     type: "module",
     main: "dist/index.js",
+    types: "types/index.d.ts",
+    exports: {
+      ".": {
+        import: "./dist/index.js",
+        require: "./dist/index.cjs.js",
+        browser: "./dist/index.iife.js",
+        types: "./types/index.d.ts",
+      },
+    },
     scripts: {
       "serve": "esbuild-wrapper serve",
       "run": "esbuild-wrapper run",
       "build": "esbuild-wrapper build",
+      "watch": "esbuild-wrapper watch",
     },
     devDependencies: {
       "esbuild-wrapper": "github:nvms/esbuild-wrapper",
@@ -210,9 +218,6 @@ export async function generate() {
   if (email && name) {
     pkg.author = `${name} <${email}>`;
   }
-
-  // using sort-package-json, sort pkg.
-  pkg = sortPackageJson(pkg);
 
   // get the answers.
   const response = await prompts(questions as any);
@@ -230,9 +235,22 @@ export async function generate() {
   // create folder "src".
   mkdirSync("src");
 
+  if (response.platform === "node") {
+    // add @types/node to devDependencies.
+    pkg.devDependencies = {
+      ...pkg.devDependencies,
+      "@types/node": "^18.0.0",
+    };
+
+    // specify node engine version
+    pkg.engines = {
+      node: ">=18.0.0",
+    };
+  }
+
   if (response.usetailwindcss) {
     mkdirSync("src/style");
-    writeFileSync("src/style/style.css", `@tailwind base;
+    writeFileSync("src/style/main.css", `@tailwind base;
 @tailwind components;
 @tailwind utilities;
 `);
@@ -284,11 +302,6 @@ export async function generate() {
 `);
   }
 
-
-  // write pkg to package.json.
-  writeFileSync("package.json", JSON.stringify(pkg, null, 2));
-  info("wrote package.json");
-
   if (response.lang === "TypeScript") {
     const config = {
       compilerOptions: {
@@ -307,8 +320,23 @@ export async function generate() {
       include: ["./src"],
     };
 
+    pkg.devDependencies = {
+      ...pkg.devDependencies,
+      "typescript": "^5.1.6",
+    };
+
+    // add "types":
+    pkg.types = "types/index.d.ts";
+
     writeFileSync("tsconfig.json", JSON.stringify(config, null, 2));
   }
+
+  // using sort-package-json, sort pkg.
+  pkg = sortPackageJson(pkg);
+
+  // write pkg to package.json.
+  writeFileSync("package.json", JSON.stringify(pkg, null, 2));
+  info("wrote package.json");
 
   // prefer dependency installation with pnpm, but fallback to npm.
   if (which("pnpm")) {

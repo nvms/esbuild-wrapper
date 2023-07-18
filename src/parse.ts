@@ -40,8 +40,14 @@ function validateConfig(config: ESBWConfig, mode: Mode) {
 }
 
 
+/**
+ * Provides sane default values for the given ESBWConfig object.
+ * @param c ESBWConfig object to provide defaults for.
+ * @returns ESBWConfig object with sane default values.
+ */
 function saneDefaults(c: ESBWConfig): ESBWConfig {
-  function def(fn: () => any, v: any) {
+
+  function def<T>(fn: () => T, v: T): T {
     let out = v;
     try {
       out = fn();
@@ -69,14 +75,24 @@ function saneDefaults(c: ESBWConfig): ESBWConfig {
   return c;
 }
 
+/**
+ * Parses the ESBWConfig file and returns the configuration object.
+ * @param mode The mode to validate the config against.
+ * @returns The parsed ESBWConfig object.
+ * @throws An error if the ESBWConfig file is not found or if the config fails validation.
+ */
 export async function parseConfig(mode: Mode): Promise<ESBWConfig> {
   const p = join(process.cwd(), "esbw.config.js");
+
   if (!existsSync(p)) {
     error(`Couldn't find esbw.config.js in ${process.cwd()}`);
     process.exit(1);
   }
+
   const module = await import(p);
   const config = module.default;
+
   validateConfig(config, mode);
+
   return saneDefaults(config);
 }

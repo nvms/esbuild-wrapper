@@ -25,7 +25,7 @@ export async function general(mode: Mode) {
   let artifacts: BuildOptions[] = [];
   let start = null;
   const buildEmitter = new EventEmitter();
-  const childPids = [];
+  let childPids = [];
 
   if (mode === Mode.SERVE) {
     new Server(config, buildEmitter);
@@ -105,29 +105,34 @@ export async function general(mode: Mode) {
   function useArtifacts(): any {
     const artifacts = {};
 
-    if (mode === Mode.BUILD && config?.buildMode?.build) {
-      config.buildMode.build.forEach((artifactName) => {
+    const buildModeArtifacts = config?.buildMode?.build;
+    const watchModeArtifacts = config?.watchMode?.build;
+    const serveModeArtifacts = config?.serveMode?.build;
+    const runModeArtifacts = config?.runMode?.build;
+
+    if (mode === Mode.BUILD && buildModeArtifacts) {
+      buildModeArtifacts.forEach((artifactName) => {
         artifacts[artifactName] = config.artifacts[artifactName];
       });
       return artifacts;
     }
 
-    if (mode === Mode.WATCH && config?.watchMode?.build) {
-      config.watchMode.build.forEach((artifactName) => {
+    if (mode === Mode.WATCH && watchModeArtifacts) {
+      watchModeArtifacts.forEach((artifactName) => {
         artifacts[artifactName] = config.artifacts[artifactName];
       });
       return artifacts;
     }
 
-    if (mode === Mode.SERVE && config?.serveMode?.build) {
-      config.serveMode.build.forEach((artifactName) => {
+    if (mode === Mode.SERVE && serveModeArtifacts) {
+      serveModeArtifacts.forEach((artifactName) => {
         artifacts[artifactName] = config.artifacts[artifactName];
       });
       return artifacts;
     }
 
-    if (mode === Mode.RUN && config?.runMode?.build) {
-      config.runMode.build.forEach((artifactName) => {
+    if (mode === Mode.RUN && runModeArtifacts) {
+      runModeArtifacts.forEach((artifactName) => {
         artifacts[artifactName] = config.artifacts[artifactName];
       });
       return artifacts;
@@ -160,10 +165,10 @@ export async function general(mode: Mode) {
           mode === Mode.SERVE
             ? config.serveMode
             : mode === Mode.BUILD
-            ? config.buildMode
-            : mode === Mode.RUN
-            ? config.runMode
-            : config.watchMode
+              ? config.buildMode
+              : mode === Mode.RUN
+                ? config.runMode
+                : config.watchMode
         ),
         // required by artifactSize plugin
         metafile: true,
@@ -229,33 +234,54 @@ export async function general(mode: Mode) {
 
         child.once("exit", (code: number) => {
           logWithTime(`pid ${child.pid} exited with code ${code}`);
-          childPids.splice(childPids.indexOf(child.pid), 1);
+          childPids = childPids.filter(pid => pid !== child.pid);
         });
 
         const paths = getWatchPaths();
         const watcher = chokidarWatch(paths, {});
 
         watcher.once("change", async () => {
-          if (pidRunning(child.pid)) {
-            logWithTime(`sending SIGHUP to pid ${child.pid}`);
-            child.kill("SIGHUP");
+          await sendProcessSignal(child.pid, "SIGHUP");
+          await waitProcessExit(child.pid, 1000);
 
-            // Give it a second to end itself.
-            for (let i = 0; i < 101; i++) {
-              if (childPids.includes(child.pid)) {
-                await sleep(10);
-              } else {
-                break;
-              }
-            }
+          if (childPids.includes(child.pid)) {
+            await sendProcessSignal(child.pid, "SIGKILL");
+            await waitProcessExit(child.pid, 1000);
+          }
 
-            // If it's still alive after 1s, send SIGKILL.
-            if (childPids.includes(child.pid)) {
-              logWithTime(`pid ${child.pid} still alive for 1s after SIGHUP, sending SIGKILL..`);
-              child.kill("SIGKILL");
-            }
+          if (childPids.includes(child.pid)) {
+            await sendProcessSignal(child.pid, "SIGKILL");
+            await waitProcessExit(child.pid, 1000);
+          }
+
+          if (childPids.includes(child.pid)) {
+            await sendProcessSignal(child.pid, "SIGKILL");
+            await waitProcessExit(child.pid, 1000);
+          }
+
+          if (childPids.includes(child.pid)) {
+            logWithTime(`pid ${child.pid} still alive after three attempts to kill, exiting with code 1`);
+            process.exit(1);
           }
         });
+
+        async function sendProcessSignal(pid: number, signal: NodeJS.Signals): Promise<void> {
+          if (!pidRunning(pid)) {
+            return;
+          }
+
+          logWithTime(`sending ${signal} to pid ${pid}`);
+          child.kill(signal);
+        }
+
+        async function waitProcessExit(pid: number, timeout: number): Promise<void> {
+          for (let i = 0; i < timeout / 10; i++) {
+            if (!childPids.includes(pid)) {
+              break;
+            }
+            await sleep(10);
+          }
+        }
       });
     }
   }
