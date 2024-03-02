@@ -86,7 +86,7 @@ async function style() {
   artifactsCommon: {
     bundle: true,
     platform: "${platform === "browser" ? "browser" : "node"}",${[loader && (lang === "JavaScript" ? "\n    loader: { \".js\": \"jsx\" }," : "\n    loader: { \".ts\": \"tsx\" },")].filter(Boolean)}
-    ${(sourcemap && `sourcemap: ${fVal(sourcemap)},`)}
+    ${sourcemap !== undefined ? `sourcemap: ${fVal(sourcemap)},` : ''}
   },
   artifacts: {
     main: {
@@ -338,14 +338,8 @@ export async function generate() {
   writeFileSync("package.json", JSON.stringify(pkg, null, 2));
   info("wrote package.json");
 
-  // prefer dependency installation with pnpm, but fallback to npm.
-  if (which("pnpm")) {
-    info("running 'pnpm install'");
-    execSync("pnpm install");
-  } else if (which("npm")) {
-    info("running 'npm install'");
-    execSync("npm install");
-  }
+  info("running 'npm install'");
+  execSync("npm install");
 
   // create the file specified by response.entrypoint.
   writeFileSync(response.entrypoint, "");
