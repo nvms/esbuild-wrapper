@@ -139,7 +139,7 @@ export async function generate() {
       ],
     },
     {
-      type: (prev: "browser" | "node") => prev === "browser" ? "select" : null,
+      type: (prev: "browser" | "node") => prev === "browser" ? "confirm" : null,
       name: "customPragma",
       message: "Do you need to define a custom JSX factory (default is React.createElement)?",
       initial: false,
